@@ -41,23 +41,27 @@ func IPsToRR(question dns.Question, ips ...net.IP) (result []dns.RR) {
 }
 
 func createIpRR(question dns.Question, ip net.IP) (rr dns.RR) {
-	head := dns.RR_Header{
-		Name:   question.Name,
-		Rrtype: question.Qtype,
-		Class:  dns.ClassINET,
-		Ttl:    cfg.TTL,
+	if ip.To4() != nil {
+		rr = &dns.A{
+			Hdr: dns.RR_Header{
+				Name:   question.Name,
+				Rrtype: dns.TypeA,
+				Class:  dns.ClassINET,
+				Ttl:    cfg.TTL,
+			},
+			A: ip.To4(),
+		}
+	} else if len(ip) == net.IPv6len {
+		rr = &dns.AAAA{
+			Hdr: dns.RR_Header{
+				Name:   question.Name,
+				Rrtype: dns.TypeAAAA,
+				Class:  dns.ClassINET,
+				Ttl:    cfg.TTL,
+			},
+			AAAA: ip.To16(),
+		}
 	}
 
-	if question.Qtype == dns.TypeA {
-		rr = &dns.A{
-			Hdr: head,
-			A:   ip,
-		}
-	} else {
-		rr = &dns.AAAA{
-			Hdr:  head,
-			AAAA: ip,
-		}
-	}
 	return
 }

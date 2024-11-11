@@ -30,23 +30,18 @@ func ResolveIp(reqType uint16, name string) ([]net.IP, error) {
 		return nil, err
 	}
 
-	var ipv4 []net.IP
-	var ipv6 []net.IP
+	var addresses []net.IP
 	for _, rr := range res.Answer {
 		switch v := rr.(type) {
 		case *dns.A:
-			ipv4 = append(ipv4, v.A)
+			addresses = append(addresses, v.A)
 		case *dns.AAAA:
-			ipv6 = append(ipv6, v.AAAA)
+			addresses = append(addresses, v.AAAA)
 		}
 	}
 
 	ttl := time.Duration(res.Answer[0].Header().Ttl) * time.Second
-	if reqType == dns.TypeA {
-		dnsCache.Set(dns.TypeA, name, ttl, ipv4)
-		return ipv4, nil
-	}
+	dnsCache.Set(reqType, name, ttl, addresses)
 
-	dnsCache.Set(dns.TypeAAAA, name, ttl, ipv6)
-	return ipv6, nil
+	return addresses, nil
 }

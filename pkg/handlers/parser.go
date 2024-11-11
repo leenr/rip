@@ -1,5 +1,7 @@
 package handlers
 
+import "net"
+
 type Parser interface {
 	RestHandlers() ([]Handler, error)
 	NextHandler() (Handler, error)
@@ -7,4 +9,5 @@ type Parser interface {
 	RestValues() ([]string, error)
 	NextRaw() (string, error)
 	FQDN() string
+	RemoteAddr() net.Addr // FIXME(leenr): not ideal placement
 }

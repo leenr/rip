@@ -32,7 +32,10 @@
     </header>
 
     <main>
-        <p class="fs-5 col-md-8">RIP is a simple NS server that extracts IP address from the requested name and sends it back in the response.</p>
+        <p class="fs-5 col-md-8">
+            RIP is a simple NS server that extracts IP address from the requested name and sends it back in the response.<br>
+            <b>It's an instance of a <a href="https://github.com/leenr/rip">fork</a> for personal use during a single CTF event. I do not guarantee its continuing operation and stability.</b>
+        </p>
 
         <div class="mb-5">
             <a href="/start" class="btn btn-primary btn-lg px-4">Start session</a>
@@ -50,6 +53,7 @@
                     <li><code>&lt;IPv6&gt;.[6|v6]</code> - strictly returns IPv6 address only</li>
                     <li><code>&lt;cname&gt;.[c|cname]</code>  - return CNAME record with <code>&lt;cname&gt;</code></li>
                     <li><code>&lt;target&gt;.[p|proxy]</code> - resolve <code>&lt;target&gt;</code> name and returns it</li>
+                    <li><code>[lo|loopback]</code> - returns back A/AAAA record with an IP from which came the request</li>
                 </ul>
             </div>
 
@@ -130,15 +134,17 @@
     </main>
 </div>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js" integrity="sha256-KSlsysqp7TXtFo/FHjb1T9b425x3hrvzjMWaJyKbpcI=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.12/dist/vue.global.prod.js" integrity="sha384-bS8XlLWkRG0nFe721hMGR3xSRd6rTocI0BpYnQJ4fWArSsq5R6Ud1hX+Iqrw4gpz" crossorigin="anonymous"></script>
 
 <script>
-    new Vue({
-        el: '#app',
-        data: {
-            zone: window.location.hostname || 'example.com',
+    const app = Vue.createApp({
+        setup() {
+            return {
+                zone: window.location.hostname || 'example.com',
+            };
         },
     });
+    app.mount("#app");
 </script>
 
 </html>

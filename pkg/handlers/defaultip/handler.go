@@ -32,7 +32,7 @@ func (h *Handler) Init(_ handlers.Parser) error {
 	return nil
 }
 
-func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
+func (h *Handler) Handle(question handlers.Question) ([]dns.RR, bool, error) {
 	h.Limiters.Use()
-	return handlers.IPsToRR(question, handlers.DefaultIp(question.Qtype)), h.Limiters.MoveOn(), nil
+	return handlers.IPsToRR(question.Question, handlers.DefaultIp(question.Qtype)), h.Limiters.MoveOn(), nil
 }

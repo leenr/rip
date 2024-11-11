@@ -39,17 +39,19 @@
                 <thead>
                 <tr>
                     <th scope="col">time</th>
+                    <th scope="col">remote</th>
                     <th scope="col">type</th>
                     <th scope="col">name</th>
                     <th scope="col">rr</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="rr in rrs" v-bind:class="{ 'table-danger': !rr.ok, 'table-light': rr.ok }">
-                    <td><pre>{{rr.time | moment}}</pre></td>
-                    <td><pre>{{rr.type}}</pre></td>
-                    <td><pre>{{rr.name}}</pre></td>
-                    <td><pre>{{rr.rr}}</pre></td>
+                <tr v-for="rr in rrs" v-cloak v-bind:class="{ 'table-danger': !rr.ok }">
+                    <td class="font-monospace">{{moment(rr.time)}}</td>
+                    <td class="font-monospace">{{rr.remoteNetwork}}://{{rr.remoteIp.indexOf('.') !== -1 ? rr.remoteIp : `[${rr.remoteIp}]`}}:{{rr.remotePort}}</td>
+                    <td class="font-monospace">{{rr.type}}</td>
+                    <td class="font-monospace">{{rr.name}}</td>
+                    <td class="font-monospace">{{rr.rr}}</td>
                 </tr>
                 </tbody>
             </table>
@@ -58,8 +60,8 @@
     </main>
 </div>
 </body>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js" integrity="sha256-KSlsysqp7TXtFo/FHjb1T9b425x3hrvzjMWaJyKbpcI=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/min/moment.min.js" integrity="sha256-c95CVJWVMOTR2b7FhjeRhPlrSVPaz5zV5eK917/s7vc=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.12/dist/vue.global.prod.js" integrity="sha384-bS8XlLWkRG0nFe721hMGR3xSRd6rTocI0BpYnQJ4fWArSsq5R6Ud1hX+Iqrw4gpz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/min/moment.min.js" integrity="sha384-jzJ+sNWbKe71gDLLfQKgdtslQjhK70oKLFN+wmwxyg6mQN7Vem+wzce4pryF0HP/" crossorigin="anonymous"></script>
 <script>
     function parseJwt(token) {
         if (token.length === 0) {
@@ -92,19 +94,15 @@
     const token = parseJwt(rawToken);
     const wsURL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?token=${rawToken}`;
 
-    new Vue({
-        el: '#app',
+    const app = Vue.createApp({
+        setup() {
+            let rrs = Vue.ref([]);
 
-        data: {
-            zone: getZone(token),
-            rrs: [],
-        },
-
-        created() {
             function connect(v) {
                 let ws = new WebSocket(wsURL);
+
                 ws.onmessage = function(e) {
-                    v.rrs.unshift(JSON.parse(e.data));
+                    rrs.value.unshift(JSON.parse(e.data));
                 };
 
                 ws.onclose = function(e) {
@@ -121,14 +119,15 @@
             }
 
             connect(this);
-        },
 
-        filters: {
-            moment(d) {
-                return moment(d).format('HH:mm:ss');
-            }
+            return {
+                zone: getZone(token),
+                rrs: rrs,
+                moment(d) { return moment(d).format('HH:mm:ss'); },
+            };
         },
     });
+    app.mount("#app");
 
 
 </script>

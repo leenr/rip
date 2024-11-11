@@ -2,6 +2,7 @@ package nssrv
 
 import (
 	"fmt"
+	"net"
 	"sync"
 
 	log "github.com/buglloc/simplelog"
@@ -20,18 +21,18 @@ type cachedHandler struct {
 	mu sync.Mutex
 }
 
-func (h *cachedHandler) Handle(question dns.Question) ([]dns.RR, error) {
+func (h *cachedHandler) Handle(question handlers.Question) ([]dns.RR, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	ret, _, err := h.Handler.Handle(question)
 	return ret, err
 }
 
-func (s *NSSrv) handleRequest(zone string, req *dns.Msg, logger *log.Logger) *dns.Msg {
+func (s *NSSrv) handleRequest(zone string, req *dns.Msg, remoteAddr net.Addr, logger *log.Logger) *dns.Msg {
 	out := &dns.Msg{}
 	out.SetReply(req)
 
-	realHandler := func(question dns.Question, zone string) (*cachedHandler, error) {
+	realHandler := func(question handlers.Question, zone string) (*cachedHandler, error) {
 		if len(question.Name)-len(zone) <= 3 {
 			// fast exit
 			return &cachedHandler{
@@ -48,7 +49,7 @@ func (s *NSSrv) handleRequest(zone string, req *dns.Msg, logger *log.Logger) *dn
 			return item.Value(), nil
 		}
 
-		h, err := parser.NewParser(question.Name, zone).NextHandler()
+		h, err := parser.NewParser(question.Name, zone, remoteAddr).NextHandler()
 		if err != nil {
 			if err != handlers.ErrEOF {
 				return nil, err
@@ -72,9 +73,11 @@ func (s *NSSrv) handleRequest(zone string, req *dns.Msg, logger *log.Logger) *dn
 		return ret, nil
 	}
 
-	for _, question := range req.Question {
+	for _, dnsQuestion := range req.Question {
+		question := handlers.Question{Question: dnsQuestion, RemoteAddr: remoteAddr}
+
 		switch question.Qtype {
-		case dns.TypeA, dns.TypeAAAA:
+		case dns.TypeA, dns.TypeAAAA, dns.TypeANY:
 			l := logger.Child("type", dns.Type(question.Qtype), "name", question.Name)
 			handler, err := realHandler(question, zone)
 			if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/buglloc/rip/v2/pkg/handlers/ipv6"
 	"github.com/buglloc/rip/v2/pkg/handlers/limiter"
 	"github.com/buglloc/rip/v2/pkg/handlers/loop"
+	"github.com/buglloc/rip/v2/pkg/handlers/loopback"
 	"github.com/buglloc/rip/v2/pkg/handlers/notify"
 	"github.com/buglloc/rip/v2/pkg/handlers/proxy"
 	"github.com/buglloc/rip/v2/pkg/handlers/random"
@@ -25,13 +26,14 @@ import (
 var _ handlers.Parser = (*Parser)(nil)
 
 type Parser struct {
-	cur      int
-	maxLabel int
-	labels   []string
-	fqdn     string
+	cur        int
+	maxLabel   int
+	labels     []string
+	fqdn       string
+	remoteAddr net.Addr
 }
 
-func NewParser(fqdn, zone string) *Parser {
+func NewParser(fqdn, zone string, remoteAddr net.Addr) *Parser {
 	ripReq := fqdn
 	if len(zone) > 0 {
 		ripReq = fqdn[:len(fqdn)-len(zone)-1]
@@ -40,15 +42,20 @@ func NewParser(fqdn, zone string) *Parser {
 	labels := strings.Split(strings.ToLower(ripReq), ".")
 	slices.StringsReverse(labels)
 	return &Parser{
-		cur:      0,
-		maxLabel: len(labels),
-		labels:   labels,
-		fqdn:     fqdn,
+		cur:        0,
+		maxLabel:   len(labels),
+		labels:     labels,
+		fqdn:       fqdn,
+		remoteAddr: remoteAddr,
 	}
 }
 
 func (p *Parser) FQDN() string {
 	return p.fqdn
+}
+
+func (p *Parser) RemoteAddr() net.Addr {
+	return p.remoteAddr
 }
 
 func (p *Parser) NextHandler() (handlers.Handler, error) {
@@ -205,6 +212,8 @@ func parseHandler(label string) handlers.Handler {
 		return notify.NewHandler()
 	case defaultip.ShortName, defaultip.Name:
 		return defaultip.NewHandler(parseLimiters()...)
+	case loopback.ShortName, loopback.Name:
+		return loopback.NewHandler(parseLimiters()...)
 	default:
 		return parseIPHandler(label)
 	}

@@ -46,7 +46,7 @@ func (h *Handler) Init(p handlers.Parser) error {
 	return nil
 }
 
-func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
+func (h *Handler) Handle(question handlers.Question) ([]dns.RR, bool, error) {
 	rr, moveOn, err := h.Nested[h.Cur].Handle(question)
 	if err != nil {
 		return nil, false, fmt.Errorf("loop: %w", err)

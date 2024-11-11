@@ -11,6 +11,7 @@ require (
 	github.com/lestrrat-go/jwx v1.2.30
 	github.com/miekg/dns v1.1.62
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pires/go-proxyproto v0.8.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0

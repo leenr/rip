@@ -2,15 +2,21 @@ package handlers
 
 import (
 	"github.com/miekg/dns"
+	"net"
 
 	"github.com/buglloc/rip/v2/pkg/handlers/limiter"
 )
+
+type Question struct {
+	dns.Question
+	RemoteAddr net.Addr
+}
 
 type Handler interface {
 	Name() string
 	Init(p Parser) error
 	SetDefaultLimiters(modifiers ...limiter.Limiter)
-	Handle(question dns.Question) (rrs []dns.RR, moveOn bool, err error)
+	Handle(question Question) (rrs []dns.RR, moveOn bool, err error)
 }
 
 type BaseHandler struct {

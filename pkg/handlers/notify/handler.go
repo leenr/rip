@@ -2,6 +2,7 @@ package notify
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -49,12 +50,14 @@ func (h *Handler) Init(p handlers.Parser) error {
 
 	err := init()
 	if err != nil {
-		h.reportErr(dns.Question{Name: p.FQDN()}, fmt.Sprintf("can't parse request: %v", err))
+		var question = handlers.Question{RemoteAddr: p.RemoteAddr(), Question: dns.Question{Name: p.FQDN()}}
+		h.reportErr(question, fmt.Sprintf("can't parse request: %v", err))
 	}
+
 	return err
 }
 
-func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
+func (h *Handler) Handle(question handlers.Question) ([]dns.RR, bool, error) {
 	rr, moveOn, err := h.Nested.Handle(question)
 	if cfg.HubEnabled {
 		if err != nil {
@@ -67,37 +70,73 @@ func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
 	return rr, moveOn, err
 }
 
-func (h *Handler) reportRR(question dns.Question, rr []dns.RR) {
+func (h *Handler) reportRR(question handlers.Question, rr []dns.RR) {
 	if h.channel == "" {
 		return
+	}
+
+	var remoteIP net.IP
+	var remotePort int
+	var remoteNetwork string
+
+	switch addr := question.RemoteAddr.(type) {
+	case *net.UDPAddr:
+		remoteIP = addr.IP
+		remotePort = addr.Port
+		remoteNetwork = addr.Network()
+	case *net.TCPAddr:
+		remoteIP = addr.IP
+		remotePort = addr.Port
+		remoteNetwork = addr.Network()
 	}
 
 	now := time.Now()
 	if len(rr) == 0 {
 		hub.Send(h.channel, hub.Message{
-			Time:  now,
-			Name:  question.Name,
-			QType: dns.Type(question.Qtype).String(),
-			RR:    "<empty>",
-			Ok:    true,
+			Time:          now,
+			RemoteIP:      remoteIP,
+			RemotePort:    remotePort,
+			RemoteNetwork: remoteNetwork,
+			Name:          question.Name,
+			QType:         dns.Type(question.Qtype).String(),
+			RR:            "<empty>",
+			Ok:            true,
 		})
 		return
 	}
 
 	for _, r := range rr {
 		hub.Send(h.channel, hub.Message{
-			Time:  now,
-			Name:  question.Name,
-			QType: dns.Type(question.Qtype).String(),
-			RR:    strings.TrimPrefix(r.String(), r.Header().String()),
-			Ok:    true,
+			Time:          now,
+			RemoteIP:      remoteIP,
+			RemotePort:    remotePort,
+			RemoteNetwork: remoteNetwork,
+			Name:          question.Name,
+			QType:         dns.Type(question.Qtype).String(),
+			RR:            strings.TrimPrefix(r.String(), r.Header().String()),
+			Ok:            true,
 		})
 	}
 }
 
-func (h *Handler) reportErr(question dns.Question, err string) {
+func (h *Handler) reportErr(question handlers.Question, err string) {
 	if h.channel == "" {
 		return
+	}
+
+	var remoteIP net.IP
+	var remotePort int
+	var remoteNetwork string
+
+	switch addr := question.RemoteAddr.(type) {
+	case *net.UDPAddr:
+		remoteIP = addr.IP
+		remotePort = addr.Port
+		remoteNetwork = addr.Network()
+	case *net.TCPAddr:
+		remoteIP = addr.IP
+		remotePort = addr.Port
+		remoteNetwork = addr.Network()
 	}
 
 	qType := "n/a"
@@ -106,10 +145,13 @@ func (h *Handler) reportErr(question dns.Question, err string) {
 	}
 
 	hub.Send(h.channel, hub.Message{
-		Time:  time.Now(),
-		Name:  question.Name,
-		QType: qType,
-		RR:    err,
-		Ok:    false,
+		Time:          time.Now(),
+		RemoteIP:      remoteIP,
+		RemotePort:    remotePort,
+		RemoteNetwork: remoteNetwork,
+		Name:          question.Name,
+		QType:         qType,
+		RR:            err,
+		Ok:            false,
 	})
 }

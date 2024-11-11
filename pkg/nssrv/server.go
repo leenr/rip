@@ -2,12 +2,14 @@ package nssrv
 
 import (
 	"context"
+	"net"
 	"strings"
 	"time"
 
 	log "github.com/buglloc/simplelog"
 	"github.com/karlseguin/ccache/v3"
 	"github.com/miekg/dns"
+	"github.com/pires/go-proxyproto"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buglloc/rip/v2/pkg/cfg"
@@ -15,17 +17,28 @@ import (
 )
 
 type NSSrv struct {
-	tcpServer *dns.Server
-	udpServer *dns.Server
-	wwwServer *www.HttpSrv
-	cache     *ccache.Cache[*cachedHandler]
+	tcpServer  *dns.Server
+	udpServer  *dns.Server
+	unixServer *dns.Server
+	wwwServer  *www.HttpSrv
+	cache      *ccache.Cache[*cachedHandler]
 }
 
 func NewSrv() (*NSSrv, error) {
+	tcpDnsListener, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
+		return nil, err
+	}
+
+	proxyTcpDnsListener := &proxyproto.Listener{
+		Listener:          tcpDnsListener,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
 	srv := &NSSrv{
 		tcpServer: &dns.Server{
 			Addr:         cfg.Addr,
-			Net:          "tcp",
+			Listener:     proxyTcpDnsListener,
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 		},
@@ -36,6 +49,7 @@ func NewSrv() (*NSSrv, error) {
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 		},
+
 		cache: ccache.New(ccache.Configure[*cachedHandler]().MaxSize(cfg.CacheSize)),
 	}
 
@@ -52,7 +66,7 @@ func (s *NSSrv) ListenAndServe() error {
 	var g errgroup.Group
 	g.Go(func() error {
 		log.Info("starting TCP-server", "addr", s.tcpServer.Addr)
-		err := s.tcpServer.ListenAndServe()
+		err := s.tcpServer.ActivateAndServe()
 		if err != nil {
 			log.Error("can't start TCP-server", "err", err)
 		}
@@ -60,7 +74,7 @@ func (s *NSSrv) ListenAndServe() error {
 	})
 
 	g.Go(func() error {
-		log.Info("starting UDP-server", "addr", s.tcpServer.Addr)
+		log.Info("starting UDP-server", "addr", s.udpServer.Addr)
 		err := s.udpServer.ListenAndServe()
 		if err != nil {
 			log.Error("can't start UDP-server", "err", err)
@@ -123,8 +137,9 @@ func (s *NSSrv) newDNSRouter() *dns.ServeMux {
 			return func(w dns.ResponseWriter, req *dns.Msg) {
 				defer func() { _ = w.Close() }()
 
-				l := log.Child("client", w.RemoteAddr().String())
-				msg := s.handleRequest(zone, req, &l)
+				remoteAddr := w.RemoteAddr()
+				l := log.Child("client", remoteAddr.String())
+				msg := s.handleRequest(zone, req, remoteAddr, &l)
 				_ = w.WriteMsg(msg)
 			}
 		}(zone))

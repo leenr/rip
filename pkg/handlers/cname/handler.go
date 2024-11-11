@@ -44,7 +44,7 @@ func (h *Handler) Init(p handlers.Parser) error {
 	return nil
 }
 
-func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
+func (h *Handler) Handle(question handlers.Question) ([]dns.RR, bool, error) {
 	rr := []dns.RR{&dns.CNAME{
 		Hdr: dns.RR_Header{
 			Name:   question.Name,

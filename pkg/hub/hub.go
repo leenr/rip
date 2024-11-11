@@ -2,6 +2,7 @@ package hub
 
 import (
 	"encoding/json"
+	"net"
 	"time"
 
 	log "github.com/buglloc/simplelog"
@@ -9,11 +10,14 @@ import (
 )
 
 type Message struct {
-	Time  time.Time `json:"time"`
-	QType string    `json:"type"`
-	Name  string    `json:"name"`
-	RR    string    `json:"rr"`
-	Ok    bool      `json:"ok"`
+	Time          time.Time `json:"time"`
+	RemoteIP      net.IP    `json:"remoteIp"`
+	RemotePort    int       `json:"remotePort"`
+	RemoteNetwork string    `json:"remoteNetwork"`
+	QType         string    `json:"type"`
+	Name          string    `json:"name"`
+	RR            string    `json:"rr"`
+	Ok            bool      `json:"ok"`
 }
 
 type channelMessage struct {

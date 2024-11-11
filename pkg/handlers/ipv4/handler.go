@@ -51,11 +51,11 @@ func (h *Handler) Init(p handlers.Parser) error {
 	return nil
 }
 
-func (h *Handler) Handle(question dns.Question) ([]dns.RR, bool, error) {
-	if question.Qtype != dns.TypeA {
+func (h *Handler) Handle(question handlers.Question) ([]dns.RR, bool, error) {
+	if question.Qtype != dns.TypeA && question.Qtype != dns.TypeANY {
 		return nil, false, nil
 	}
 
 	h.Limiters.Use()
-	return handlers.IPsToRR(question, h.IP), h.Limiters.MoveOn(), nil
+	return handlers.IPsToRR(question.Question, h.IP), h.Limiters.MoveOn(), nil
 }
